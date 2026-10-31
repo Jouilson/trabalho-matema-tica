@@ -268,15 +268,15 @@
             }
         }
 
-        function getLatestTeamForCurrentUser() {
-            if (!currentUser.grade || !currentUser.teamName) return null;
-            const teams = getPresetTeamsForGrade(currentUser.grade);
-            return teams.find(x => x.name === currentUser.teamName) || null;
-        }
-
         function normalizeTeamMembers(team) {
             if (!team) return [];
-            team.members = Array.from(new Set((team.members || []).filter(Boolean).map(String)));
+            const members = Array.isArray(team.members) ? team.members : [];
+            const normalized = members
+                .filter(Boolean)
+                .map(name => String(name).trim())
+                .filter(name => name.length > 0);
+
+            team.members = [...new Set(normalized)];
             return team.members;
         }
 
@@ -285,7 +285,7 @@
             let teams = safeGetStorage(storageKey);
             const topicsList = database[grade] || database["6"];
 
-            if (!teams) {
+            if (!teams || !Array.isArray(teams)) {
                 teams = presetTeamNames.map((name, index) => {
                     const assignedTopic = topicsList[index % topicsList.length];
                     return {
@@ -300,19 +300,38 @@
                     };
                 });
                 safeSetStorage(storageKey, teams);
-            } else {
-                teams = teams.map((team, index) => {
-                    if (!team.topic) {
-                        team.topic = topicsList[index % topicsList.length];
-                    }
-                    if (!team.members) team.members = [];
-                    team.members = normalizeTeamMembers(team);
-                    if (!team.chat) team.chat = [];
-                    if (!team.aiChat) team.aiChat = [];
-                    return team;
-                });
             }
+
+            teams = teams.map((team, index) => {
+                if (!team) {
+                    team = {
+                        name: presetTeamNames[index],
+                        grade,
+                        members: [],
+                        topic: topicsList[index % topicsList.length],
+                        selectedTitle: "",
+                        docContent: "",
+                        chat: [],
+                        aiChat: []
+                    };
+                }
+
+                if (!team.topic) team.topic = topicsList[index % topicsList.length];
+                if (!Array.isArray(team.members)) team.members = [];
+                if (!Array.isArray(team.chat)) team.chat = [];
+                if (!Array.isArray(team.aiChat)) team.aiChat = [];
+
+                normalizeTeamMembers(team);
+                return team;
+            });
+
             return teams;
+        }
+
+        function getLatestTeamForCurrentUser() {
+            if (!currentUser.grade || !currentUser.teamName) return null;
+            const teams = getPresetTeamsForGrade(currentUser.grade);
+            return teams.find(x => x.name === currentUser.teamName) || null;
         }
 
         function resetSession() {
@@ -370,33 +389,45 @@
                 return;
             }
 
+            if (!grade) {
+                alert("Selecione o ano escolar antes de entrar em uma equipe!");
+                return;
+            }
+
             const maxMembers = (grade === "8") ? 4 : 5;
             const teams = getPresetTeamsForGrade(grade);
             const team = teams.find(t => t.name === teamName);
-
             if (!team) return;
 
-            team.members = normalizeTeamMembers(team);
-            const alreadyInThis = team.members.includes(studentName);
-            if (!alreadyInThis) {
-                const inAnother = teams.some(t => normalizeTeamMembers(t).includes(studentName));
-                if (inAnother) {
-                    alert("Você já está cadastrado em outra equipe deste ano!");
-                    return;
-                }
+            normalizeTeamMembers(team);
 
-                if (team.members.length >= maxMembers) {
-                    alert(`Esta equipe atingiu o limite máximo de ${maxMembers} alunos.`);
-                    return;
-                }
-
-                team.members.push(studentName);
-                safeSetStorage(`math_preset_teams_${grade}`, teams);
+            if (team.members.includes(studentName)) {
+                currentUser = { name: studentName, grade, teamName };
+                proceedAfterLogin(team);
+                return;
             }
 
+            const inAnotherTeam = teams.some(t => {
+                if (t.name === teamName) return false;
+                return normalizeTeamMembers(t).includes(studentName);
+            });
+
+            if (inAnotherTeam) {
+                alert("Você já está cadastrado em outra equipe deste ano!");
+                return;
+            }
+
+            if (team.members.length >= maxMembers) {
+                alert(`Esta equipe atingiu o limite máximo de ${maxMembers} alunos.`);
+                return;
+            }
+
+            team.members.push(studentName);
+            team.members = [...new Set(team.members.map(n => n.trim()).filter(Boolean))];
+            safeSetStorage(`math_preset_teams_${grade}`, teams);
+
             currentUser = { name: studentName, grade, teamName };
-            const latestTeam = getLatestTeamForCurrentUser();
-            proceedAfterLogin(latestTeam || team);
+            proceedAfterLogin(team);
         }
 
         function proceedAfterLogin(teamObj) {
@@ -434,8 +465,14 @@
         }
 
         function openWorkspace(teamObj) {
+            const teams = getPresetTeamsForGrade(currentUser.grade);
+            const team = teams.find(x => x.name === currentUser.teamName) || teamObj;
+            if (team) {
+                currentTopicData = team.topic;
+            }
+
             showScreen("screen-workspace");
-            updateWorkspaceUI(teamObj);
+            updateWorkspaceUI(team || teamObj);
 
             if (workspaceRefreshInterval) clearInterval(workspaceRefreshInterval);
             workspaceRefreshInterval = setInterval(refreshWorkspaceData, 3000);
@@ -449,19 +486,24 @@
 
         function updateWorkspaceUI(teamObj) {
             if (!teamObj) return;
-            currentTopicData = teamObj.topic;
-            teamObj.members = normalizeTeamMembers(teamObj);
-            document.getElementById("workspace-team-name").innerText = `Equipe: ${teamObj.name} (${teamObj.members.join(", ")})`;
-            document.getElementById("workspace-title-display").innerText = `Título: ${teamObj.selectedTitle || '-'}`;
-            document.getElementById("doc-header-title").innerText = teamObj.selectedTitle || teamObj.topic.topic;
+
+            const teams = getPresetTeamsForGrade(currentUser.grade);
+            const team = teams.find(t => t.name === currentUser.teamName) || teamObj;
+            if (!team) return;
+
+            normalizeTeamMembers(team);
+
+            document.getElementById("workspace-team-name").innerText = `Equipe: ${team.name} (${team.members.join(", ") || "Sem membros"})`;
+            document.getElementById("workspace-title-display").innerText = `Título: ${team.selectedTitle || '-'}`;
+            document.getElementById("doc-header-title").innerText = team.selectedTitle || team.topic.topic;
 
             const editor = document.getElementById("docs-editor");
-            if (teamObj.docContent && document.activeElement !== editor && editor.innerHTML !== teamObj.docContent) {
-                editor.innerHTML = teamObj.docContent;
+            if (team.docContent && editor.innerHTML !== team.docContent) {
+                editor.innerHTML = team.docContent;
             }
 
-            renderChat(teamObj.chat || []);
-            renderAI(teamObj.aiChat || []);
+            renderChat(team.chat || []);
+            renderAI(team.aiChat || []);
         }
 
         function docCommand(command, value = null) {
@@ -481,13 +523,14 @@
 
         function autoSaveWork() {
             if (!currentUser.grade || !currentUser.teamName) return;
+
             const teams = getPresetTeamsForGrade(currentUser.grade);
             const team = teams.find(x => x.name === currentUser.teamName);
-            if (team) {
-                team.members = normalizeTeamMembers(team);
-                team.docContent = document.getElementById("docs-editor").innerHTML;
-                safeSetStorage(`math_preset_teams_${currentUser.grade}`, teams);
-            }
+            if (!team) return;
+
+            normalizeTeamMembers(team);
+            team.docContent = document.getElementById("docs-editor").innerHTML;
+            safeSetStorage(`math_preset_teams_${currentUser.grade}`, teams);
         }
 
         function saveWorkManually() {
