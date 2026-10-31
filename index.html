@@ -268,6 +268,18 @@
             }
         }
 
+        function getLatestTeamForCurrentUser() {
+            if (!currentUser.grade || !currentUser.teamName) return null;
+            const teams = getPresetTeamsForGrade(currentUser.grade);
+            return teams.find(x => x.name === currentUser.teamName) || null;
+        }
+
+        function normalizeTeamMembers(team) {
+            if (!team) return [];
+            team.members = Array.from(new Set((team.members || []).filter(Boolean).map(String)));
+            return team.members;
+        }
+
         function getPresetTeamsForGrade(grade) {
             const storageKey = `math_preset_teams_${grade}`;
             let teams = safeGetStorage(storageKey);
@@ -294,6 +306,7 @@
                         team.topic = topicsList[index % topicsList.length];
                     }
                     if (!team.members) team.members = [];
+                    team.members = normalizeTeamMembers(team);
                     if (!team.chat) team.chat = [];
                     if (!team.aiChat) team.aiChat = [];
                     return team;
@@ -363,9 +376,10 @@
 
             if (!team) return;
 
+            team.members = normalizeTeamMembers(team);
             const alreadyInThis = team.members.includes(studentName);
             if (!alreadyInThis) {
-                const inAnother = teams.some(t => t.members.includes(studentName));
+                const inAnother = teams.some(t => normalizeTeamMembers(t).includes(studentName));
                 if (inAnother) {
                     alert("Você já está cadastrado em outra equipe deste ano!");
                     return;
@@ -381,10 +395,12 @@
             }
 
             currentUser = { name: studentName, grade, teamName };
-            proceedAfterLogin(team);
+            const latestTeam = getLatestTeamForCurrentUser();
+            proceedAfterLogin(latestTeam || team);
         }
 
         function proceedAfterLogin(teamObj) {
+            if (!teamObj) return;
             currentTopicData = teamObj.topic;
             document.getElementById("title-screen-team").innerText = teamObj.name;
             showScreen("screen-title");
@@ -426,16 +442,15 @@
         }
 
         function refreshWorkspaceData() {
-            if (!currentUser.grade || !currentUser.teamName) return;
-            const teams = getPresetTeamsForGrade(currentUser.grade);
-            const teamObj = teams.find(x => x.name === currentUser.teamName);
-            if (teamObj) {
-                updateWorkspaceUI(teamObj);
-            }
+            const latestTeam = getLatestTeamForCurrentUser();
+            if (!latestTeam) return;
+            updateWorkspaceUI(latestTeam);
         }
 
         function updateWorkspaceUI(teamObj) {
+            if (!teamObj) return;
             currentTopicData = teamObj.topic;
+            teamObj.members = normalizeTeamMembers(teamObj);
             document.getElementById("workspace-team-name").innerText = `Equipe: ${teamObj.name} (${teamObj.members.join(", ")})`;
             document.getElementById("workspace-title-display").innerText = `Título: ${teamObj.selectedTitle || '-'}`;
             document.getElementById("doc-header-title").innerText = teamObj.selectedTitle || teamObj.topic.topic;
@@ -469,6 +484,7 @@
             const teams = getPresetTeamsForGrade(currentUser.grade);
             const team = teams.find(x => x.name === currentUser.teamName);
             if (team) {
+                team.members = normalizeTeamMembers(team);
                 team.docContent = document.getElementById("docs-editor").innerHTML;
                 safeSetStorage(`math_preset_teams_${currentUser.grade}`, teams);
             }
