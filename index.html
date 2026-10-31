@@ -220,12 +220,31 @@
                 .replace(/'/g, "&#039;");
         }
 
+        function safeGetStorage(key) {
+            try {
+                const value = localStorage.getItem(key);
+                return value ? JSON.parse(value) : null;
+            } catch (error) {
+                console.warn(`Falha ao ler ${key}:`, error);
+                return null;
+            }
+        }
+
+        function safeSetStorage(key, value) {
+            try {
+                localStorage.setItem(key, JSON.stringify(value));
+                return true;
+            } catch (error) {
+                console.warn(`Falha ao salvar ${key}:`, error);
+                return false;
+            }
+        }
+
         function getPresetTeamsForGrade(grade) {
             let storageKey = `math_preset_teams_${grade}`;
-            let teams = JSON.parse(localStorage.getItem(storageKey));
-            
+            let teams = safeGetStorage(storageKey);
             const topicsList = database[grade] || database["6"];
-            
+
             if (!teams) {
                 teams = presetTeamNames.map((name, index) => {
                     let assignedTopic = topicsList[index % topicsList.length];
@@ -240,9 +259,8 @@
                         aiChat: []
                     };
                 });
-                localStorage.setItem(storageKey, JSON.stringify(teams));
+                safeSetStorage(storageKey, teams);
             } else {
-                // Garante que novas propriedades e tópicos permaneçam consistentes
                 teams = teams.map((t, index) => {
                     if (!t.topic) {
                         t.topic = topicsList[index % topicsList.length];
@@ -315,7 +333,7 @@
                 }
 
                 team.members.push(studentName);
-                localStorage.setItem(`math_preset_teams_${grade}`, JSON.stringify(teams));
+                safeSetStorage(`math_preset_teams_${grade}`, teams);
             }
 
             currentUser = { name: studentName, grade: grade, teamName: teamName };
@@ -345,8 +363,9 @@
                 div.onclick = () => {
                     let teams = getPresetTeamsForGrade(currentUser.grade);
                     let tObj = teams.find(x => x.name === currentUser.teamName);
+                    if (!tObj) return;
                     tObj.selectedTitle = t;
-                    localStorage.setItem(`math_preset_teams_${currentUser.grade}`, JSON.stringify(teams));
+                    safeSetStorage(`math_preset_teams_${currentUser.grade}`, teams);
                     openWorkspace(tObj);
                 };
                 container.appendChild(div);
@@ -408,7 +427,7 @@
             let team = teams.find(x => x.name === currentUser.teamName);
             if (team) {
                 team.docContent = document.getElementById("docs-editor").innerHTML;
-                localStorage.setItem(`math_preset_teams_${currentUser.grade}`, JSON.stringify(teams));
+                safeSetStorage(`math_preset_teams_${currentUser.grade}`, teams);
             }
         }
 
@@ -426,11 +445,12 @@
 
             let teams = getPresetTeamsForGrade(currentUser.grade);
             let team = teams.find(x => x.name === currentUser.teamName);
+            if (!team) return;
 
             if (!team.chat) team.chat = [];
             team.chat.push({ sender: currentUser.name, text: msg, time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) });
             
-            localStorage.setItem(`math_preset_teams_${currentUser.grade}`, JSON.stringify(teams));
+            safeSetStorage(`math_preset_teams_${currentUser.grade}`, teams);
             input.value = "";
             renderChat(team.chat);
         }
@@ -457,6 +477,7 @@
 
             let teams = getPresetTeamsForGrade(currentUser.grade);
             let team = teams.find(x => x.name === currentUser.teamName);
+            if (!team) return;
 
             if (!team.aiChat) team.aiChat = [];
             team.aiChat.push({ sender: currentUser.name, text: query });
@@ -472,7 +493,7 @@
             }
 
             team.aiChat.push({ sender: "Professor IA 🤖", text: aiReply });
-            localStorage.setItem(`math_preset_teams_${currentUser.grade}`, JSON.stringify(teams));
+            safeSetStorage(`math_preset_teams_${currentUser.grade}`, teams);
             input.value = "";
             renderAI(team.aiChat);
         }
@@ -488,9 +509,11 @@
         }
 
         function sendWorkByEmail() {
+            if (!currentUser.grade || !currentUser.teamName) return;
             saveWorkManually();
             let teams = getPresetTeamsForGrade(currentUser.grade);
             let team = teams.find(x => x.name === currentUser.teamName);
+            if (!team) return;
 
             const professorEmail = "profjouilson@gmail.com";
             const subject = encodeURIComponent(`Trabalho de Matemática - ${team.grade}º Ano - Equipe: ${team.name}`);
@@ -511,10 +534,12 @@
         }
 
         function finishWorkspace() {
+            if (!currentUser.grade || !currentUser.teamName) return;
             if (workspaceRefreshInterval) clearInterval(workspaceRefreshInterval);
             saveWorkManually();
             let teams = getPresetTeamsForGrade(currentUser.grade);
             let team = teams.find(x => x.name === currentUser.teamName);
+            if (!team) return;
 
             document.getElementById("screen-workspace").classList.add("hidden");
             document.getElementById("screen-finish").classList.remove("hidden");
@@ -537,11 +562,6 @@
             const gradeSelect = document.getElementById('grade-select');
             if (gradeSelect) {
                 gradeSelect.value = '';
-            }
-            if (typeof window !== 'undefined') {
-                if (localStorage.getItem('math_preset_teams_6')) {
-                    loadPresetTeams();
-                }
             }
         });
     </script>
