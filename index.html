@@ -33,6 +33,13 @@
             gap: 0.25rem;
         }
         .toolbar-btn:hover { background-color: #e5e7eb; }
+        .screen { display: none; }
+        .screen.active { display: block; }
+        .reset-btn {
+            border: 1px solid rgba(99,102,241,0.2);
+            background: rgba(99,102,241,0.08);
+            color: #4338ca;
+        }
     </style>
 </head>
 <body class="p-3 md:p-6 flex flex-col items-center justify-center">
@@ -49,7 +56,7 @@
     </header>
 
     <main class="max-w-4xl w-full glass-card rounded-3xl p-5 md:p-8 relative">
-        <section id="screen-login" class="space-y-6">
+        <section id="screen-login" class="screen active space-y-6">
             <div class="text-center">
                 <span class="text-5xl">🛡️</span>
                 <h2 class="text-2xl md:text-3xl font-extrabold text-indigo-700 font-comic mt-2">Identificação do Aluno</h2>
@@ -85,7 +92,15 @@
             </div>
         </section>
 
-        <section id="screen-title" class="hidden space-y-6">
+        <section id="screen-title" class="screen space-y-6">
+            <div class="flex justify-between items-center">
+                <button onclick="showScreen('screen-login')" class="reset-btn px-3 py-2 rounded-xl text-xs font-bold">
+                    <i class="fa-solid fa-arrow-left"></i> Voltar
+                </button>
+                <div class="text-right text-xs text-gray-500">
+                    Equipe: <span id="title-screen-team" class="font-bold text-indigo-700">-</span>
+                </div>
+            </div>
             <div class="text-center">
                 <span class="text-5xl">🎨</span>
                 <h2 class="text-2xl md:text-3xl font-extrabold text-pink-600 font-comic mt-2">Escolha o Título do Trabalho</h2>
@@ -94,13 +109,14 @@
             <div id="title-suggestions" class="space-y-3"></div>
         </section>
 
-        <section id="screen-workspace" class="hidden space-y-4">
+        <section id="screen-workspace" class="screen space-y-4">
             <div class="flex flex-wrap justify-between items-center bg-purple-100 p-3 rounded-2xl border border-purple-300">
                 <div>
                     <span id="workspace-team-name" class="font-black text-purple-900 text-lg">Equipe: Nome</span>
                     <p id="workspace-title-display" class="text-xs font-bold text-purple-700">Título: -</p>
                 </div>
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-2 flex-wrap justify-end">
+                    <button onclick="showScreen('screen-login')" class="bg-white border border-purple-200 text-purple-700 font-bold px-3 py-1.5 rounded-xl text-xs shadow hover:bg-purple-50">Trocar equipe</button>
                     <span id="save-status" class="text-xs font-bold text-green-600 bg-green-100 px-3 py-1 rounded-full"><i class="fa-solid fa-cloud"></i> Salvo na nuvem</span>
                     <button onclick="saveWorkManually()" class="bg-green-600 hover:bg-green-700 text-white font-bold px-3 py-1.5 rounded-xl text-xs shadow">Salvar</button>
                     <button onclick="finishWorkspace()" class="bg-purple-600 hover:bg-purple-700 text-white font-bold px-3 py-1.5 rounded-xl text-xs shadow">Finalizar e Enviar ao Prof. 🏆</button>
@@ -161,7 +177,7 @@
             </div>
         </section>
 
-        <section id="screen-finish" class="hidden space-y-6 text-center">
+        <section id="screen-finish" class="screen space-y-6 text-center">
             <div class="space-y-2">
                 <span class="text-6xl animate-bounce inline-block">🏆</span>
                 <h2 class="text-3xl font-black text-purple-800 font-comic">TRABALHO ENVIADO COM SUCESSO!</h2>
@@ -171,14 +187,14 @@
             <div id="final-report-view" class="text-left bg-white p-6 rounded-2xl border-4 border-purple-200 space-y-3 shadow-inner max-h-96 overflow-y-auto">
             </div>
 
-            <div class="flex justify-center gap-3">
+            <div class="flex justify-center gap-3 flex-wrap">
                 <button onclick="sendWorkByEmail()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-2xl flex items-center gap-2">
                     <i class="fa-solid fa-envelope"></i> Reenviar por E-mail
                 </button>
                 <button onclick="window.print()" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-2xl flex items-center gap-2">
                     <i class="fa-solid fa-print"></i> Imprimir / PDF
                 </button>
-                <button onclick="location.reload()" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-3 px-6 rounded-2xl">
+                <button onclick="resetSession()" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-3 px-6 rounded-2xl">
                     🔄 Sair
                 </button>
             </div>
@@ -211,6 +227,18 @@
         let currentTopicData = null;
         let workspaceRefreshInterval = null;
 
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(el => {
+                el.classList.remove('active');
+                el.classList.add('hidden');
+            });
+            const target = document.getElementById(screenId);
+            if (target) {
+                target.classList.remove('hidden');
+                target.classList.add('active');
+            }
+        }
+
         function escapeHTML(value = "") {
             return String(value)
                 .replace(/&/g, "&amp;")
@@ -241,16 +269,16 @@
         }
 
         function getPresetTeamsForGrade(grade) {
-            let storageKey = `math_preset_teams_${grade}`;
+            const storageKey = `math_preset_teams_${grade}`;
             let teams = safeGetStorage(storageKey);
             const topicsList = database[grade] || database["6"];
 
             if (!teams) {
                 teams = presetTeamNames.map((name, index) => {
-                    let assignedTopic = topicsList[index % topicsList.length];
+                    const assignedTopic = topicsList[index % topicsList.length];
                     return {
-                        name: name,
-                        grade: grade,
+                        name,
+                        grade,
                         members: [],
                         topic: assignedTopic,
                         selectedTitle: "",
@@ -261,17 +289,33 @@
                 });
                 safeSetStorage(storageKey, teams);
             } else {
-                teams = teams.map((t, index) => {
-                    if (!t.topic) {
-                        t.topic = topicsList[index % topicsList.length];
+                teams = teams.map((team, index) => {
+                    if (!team.topic) {
+                        team.topic = topicsList[index % topicsList.length];
                     }
-                    if (!t.members) t.members = [];
-                    if (!t.chat) t.chat = [];
-                    if (!t.aiChat) t.aiChat = [];
-                    return t;
+                    if (!team.members) team.members = [];
+                    if (!team.chat) team.chat = [];
+                    if (!team.aiChat) team.aiChat = [];
+                    return team;
                 });
             }
             return teams;
+        }
+
+        function resetSession() {
+            if (workspaceRefreshInterval) clearInterval(workspaceRefreshInterval);
+            currentUser = { name: "", grade: "", teamName: "" };
+            currentTopicData = null;
+            document.getElementById("student-name").value = "";
+            document.getElementById("grade-select").value = "";
+            document.getElementById("chat-input").value = "";
+            document.getElementById("ai-input").value = "";
+            document.getElementById("docs-editor").innerHTML = '<h3 class="text-purple-800 font-bold text-lg" id="doc-header-title">Relatório da Equipe</h3><p class="text-gray-500 italic">Comecem a escrever aqui as investigações, soluções e respostas aos desafios propostos...</p>';
+            document.getElementById("teams-list-container").innerHTML = '<p class="text-xs text-gray-500 italic">Selecione o ano escolar acima para ver as equipes lúdicas.</p>';
+            document.getElementById("title-suggestions").innerHTML = "";
+            document.getElementById("chat-messages").innerHTML = '<p class="text-gray-500 italic text-center">Troquem ideias aqui!</p>';
+            document.getElementById("ai-messages").innerHTML = '<div class="bg-white p-2 rounded-xl border border-pink-100 text-gray-800"><b>Professor IA:</b> Olá! Pergunte-me qualquer dúvida sobre o assunto do seu trabalho para receber ideias e explicações!</div>';
+            showScreen("screen-login");
         }
 
         function loadPresetTeams() {
@@ -284,8 +328,8 @@
                 return;
             }
 
-            let maxMembers = (grade === "8") ? 4 : 5;
-            let teams = getPresetTeamsForGrade(grade);
+            const maxMembers = (grade === "8") ? 4 : 5;
+            const teams = getPresetTeamsForGrade(grade);
 
             teams.forEach(team => {
                 const isFull = team.members.length >= maxMembers;
@@ -313,15 +357,15 @@
                 return;
             }
 
-            let maxMembers = (grade === "8") ? 4 : 5;
-            let teams = getPresetTeamsForGrade(grade);
-            let team = teams.find(t => t.name === teamName);
+            const maxMembers = (grade === "8") ? 4 : 5;
+            const teams = getPresetTeamsForGrade(grade);
+            const team = teams.find(t => t.name === teamName);
 
             if (!team) return;
 
-            let alreadyInThis = team.members.includes(studentName);
+            const alreadyInThis = team.members.includes(studentName);
             if (!alreadyInThis) {
-                let inAnother = teams.some(t => t.members.includes(studentName));
+                const inAnother = teams.some(t => t.members.includes(studentName));
                 if (inAnother) {
                     alert("Você já está cadastrado em outra equipe deste ano!");
                     return;
@@ -336,13 +380,14 @@
                 safeSetStorage(`math_preset_teams_${grade}`, teams);
             }
 
-            currentUser = { name: studentName, grade: grade, teamName: teamName };
+            currentUser = { name: studentName, grade, teamName };
             proceedAfterLogin(team);
         }
 
         function proceedAfterLogin(teamObj) {
             currentTopicData = teamObj.topic;
-            document.getElementById("screen-login").classList.add("hidden");
+            document.getElementById("title-screen-team").innerText = teamObj.name;
+            showScreen("screen-title");
 
             if (!teamObj.selectedTitle) {
                 showTitleChoices(teamObj);
@@ -361,8 +406,8 @@
                 div.className = "p-4 rounded-2xl border-4 border-pink-200 hover:border-pink-500 bg-white cursor-pointer font-bold text-gray-800";
                 div.innerText = t;
                 div.onclick = () => {
-                    let teams = getPresetTeamsForGrade(currentUser.grade);
-                    let tObj = teams.find(x => x.name === currentUser.teamName);
+                    const teams = getPresetTeamsForGrade(currentUser.grade);
+                    const tObj = teams.find(x => x.name === currentUser.teamName);
                     if (!tObj) return;
                     tObj.selectedTitle = t;
                     safeSetStorage(`math_preset_teams_${currentUser.grade}`, teams);
@@ -373,9 +418,7 @@
         }
 
         function openWorkspace(teamObj) {
-            document.getElementById("screen-title").classList.add("hidden");
-            document.getElementById("screen-workspace").classList.remove("hidden");
-
+            showScreen("screen-workspace");
             updateWorkspaceUI(teamObj);
 
             if (workspaceRefreshInterval) clearInterval(workspaceRefreshInterval);
@@ -384,8 +427,8 @@
 
         function refreshWorkspaceData() {
             if (!currentUser.grade || !currentUser.teamName) return;
-            let teams = getPresetTeamsForGrade(currentUser.grade);
-            let teamObj = teams.find(x => x.name === currentUser.teamName);
+            const teams = getPresetTeamsForGrade(currentUser.grade);
+            const teamObj = teams.find(x => x.name === currentUser.teamName);
             if (teamObj) {
                 updateWorkspaceUI(teamObj);
             }
@@ -423,8 +466,8 @@
 
         function autoSaveWork() {
             if (!currentUser.grade || !currentUser.teamName) return;
-            let teams = getPresetTeamsForGrade(currentUser.grade);
-            let team = teams.find(x => x.name === currentUser.teamName);
+            const teams = getPresetTeamsForGrade(currentUser.grade);
+            const team = teams.find(x => x.name === currentUser.teamName);
             if (team) {
                 team.docContent = document.getElementById("docs-editor").innerHTML;
                 safeSetStorage(`math_preset_teams_${currentUser.grade}`, teams);
@@ -443,13 +486,12 @@
             const msg = input.value.trim();
             if (!msg) return;
 
-            let teams = getPresetTeamsForGrade(currentUser.grade);
-            let team = teams.find(x => x.name === currentUser.teamName);
+            const teams = getPresetTeamsForGrade(currentUser.grade);
+            const team = teams.find(x => x.name === currentUser.teamName);
             if (!team) return;
 
             if (!team.chat) team.chat = [];
-            team.chat.push({ sender: currentUser.name, text: msg, time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) });
-            
+            team.chat.push({ sender: currentUser.name, text: msg, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) });
             safeSetStorage(`math_preset_teams_${currentUser.grade}`, teams);
             input.value = "";
             renderChat(team.chat);
@@ -457,7 +499,7 @@
 
         function renderChat(chatList) {
             const container = document.getElementById("chat-messages");
-            if (chatList.length === 0) {
+            if (!chatList || chatList.length === 0) {
                 container.innerHTML = '<p class="text-gray-500 italic text-center">Troquem ideias aqui!</p>';
                 return;
             }
@@ -475,20 +517,21 @@
             const query = input.value.trim();
             if (!query) return;
 
-            let teams = getPresetTeamsForGrade(currentUser.grade);
-            let team = teams.find(x => x.name === currentUser.teamName);
+            const teams = getPresetTeamsForGrade(currentUser.grade);
+            const team = teams.find(x => x.name === currentUser.teamName);
             if (!team) return;
 
             if (!team.aiChat) team.aiChat = [];
             team.aiChat.push({ sender: currentUser.name, text: query });
 
             let aiReply = `Ótima pergunta sobre ${currentTopicData.topic}! Para responder a isso no trabalho, pensem em como aplicamos esse conceito no cotidiano (na escola, nas compras ou em jogos). Pesquisem exemplos práticos e registrem no documento!`;
-            
-            if (query.toLowerCase().includes("polígono")) {
+
+            const lower = query.toLowerCase();
+            if (lower.includes("polígono") || lower.includes("poligono")) {
                 aiReply = "Polígonos são figuras geométricas planas fechadas formadas apenas por segmentos de reta que não se cruzam (como triângulos, quadrados e hexágonos). No cotidiano, vemos polígonos nas janelas, pisos, placas de trânsito e em gráficos de jogos!";
-            } else if (query.toLowerCase().includes("porcentagem")) {
+            } else if (lower.includes("porcentagem")) {
                 aiReply = "A porcentagem representa uma razão com base 100. Pensem nela como fatias de um total de 100 partes. No dia a dia, usamos em descontos de lojas, promoções e na bateria do celular!";
-            } else if (query.toLowerCase().includes("equação")) {
+            } else if (lower.includes("equação") || lower.includes("equacao")) {
                 aiReply = "Uma equação envolve valores desconhecidos (incógnitas). No 8º ano, as equações do 2º grau ajudam a calcular áreas, trajetórias de objetos e lançamentos!";
             }
 
@@ -500,6 +543,10 @@
 
         function renderAI(aiList) {
             const container = document.getElementById("ai-messages");
+            if (!aiList || aiList.length === 0) {
+                container.innerHTML = '<div class="bg-white p-2 rounded-xl border border-pink-100 text-gray-800"><b>Professor IA:</b> Olá! Pergunte-me qualquer dúvida sobre o assunto do seu trabalho para receber ideias e explicações!</div>';
+                return;
+            }
             container.innerHTML = aiList.map(a => `
                 <div class="p-2 rounded-xl border ${a.sender.includes('IA') ? 'bg-pink-100 border-pink-200 text-pink-950 font-medium' : 'bg-white border-pink-100 text-gray-800'}">
                     <b>${escapeHTML(a.sender)}:</b> ${escapeHTML(a.text)}
@@ -511,15 +558,15 @@
         function sendWorkByEmail() {
             if (!currentUser.grade || !currentUser.teamName) return;
             saveWorkManually();
-            let teams = getPresetTeamsForGrade(currentUser.grade);
-            let team = teams.find(x => x.name === currentUser.teamName);
+            const teams = getPresetTeamsForGrade(currentUser.grade);
+            const team = teams.find(x => x.name === currentUser.teamName);
             if (!team) return;
 
             const professorEmail = "profjouilson@gmail.com";
             const subject = encodeURIComponent(`Trabalho de Matemática - ${team.grade}º Ano - Equipe: ${team.name}`);
             const tempDiv = document.createElement("div");
             tempDiv.innerHTML = team.docContent;
-            const plainTextContent = tempDiv.innerText || tempDiv.textContent;
+            const plainTextContent = tempDiv.innerText || tempDiv.textContent || "";
 
             const body = encodeURIComponent(
                 `Olá Professor Jouilson,\n\nA equipe ${team.name} concluiu o trabalho!\n\n` +
@@ -537,12 +584,12 @@
             if (!currentUser.grade || !currentUser.teamName) return;
             if (workspaceRefreshInterval) clearInterval(workspaceRefreshInterval);
             saveWorkManually();
-            let teams = getPresetTeamsForGrade(currentUser.grade);
-            let team = teams.find(x => x.name === currentUser.teamName);
+
+            const teams = getPresetTeamsForGrade(currentUser.grade);
+            const team = teams.find(x => x.name === currentUser.teamName);
             if (!team) return;
 
-            document.getElementById("screen-workspace").classList.add("hidden");
-            document.getElementById("screen-finish").classList.remove("hidden");
+            showScreen("screen-finish");
             if (typeof confetti === 'function') confetti({ particleCount: 150, spread: 90, origin: { y: 0.6 } });
 
             document.getElementById("final-report-view").innerHTML = `
@@ -563,6 +610,7 @@
             if (gradeSelect) {
                 gradeSelect.value = '';
             }
+            showScreen('screen-login');
         });
     </script>
 </body>
