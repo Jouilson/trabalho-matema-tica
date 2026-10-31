@@ -211,6 +211,15 @@
         let currentTopicData = null;
         let workspaceRefreshInterval = null;
 
+        function escapeHTML(value = "") {
+            return String(value)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/\"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
         function getPresetTeamsForGrade(grade) {
             let storageKey = `math_preset_teams_${grade}`;
             let teams = JSON.parse(localStorage.getItem(storageKey));
@@ -233,6 +242,7 @@
                 });
                 localStorage.setItem(storageKey, JSON.stringify(teams));
             } else {
+                // Garante que novas propriedades e tópicos permaneçam consistentes
                 teams = teams.map((t, index) => {
                     if (!t.topic) {
                         t.topic = topicsList[index % topicsList.length];
@@ -265,8 +275,8 @@
                 div.className = "flex justify-between items-center bg-white p-2.5 rounded-xl border border-indigo-200 text-sm";
                 div.innerHTML = `
                     <div>
-                        <span class="font-bold text-indigo-900">${team.name}</span>
-                        <span class="text-xs text-gray-500 block">Tema: ${team.topic.topic} | Membros (${team.members.length}/${maxMembers}): ${team.members.join(", ") || "Vazio"}</span>
+                        <span class="font-bold text-indigo-900">${escapeHTML(team.name)}</span>
+                        <span class="text-xs text-gray-500 block">Tema: ${escapeHTML(team.topic.topic)} | Membros (${team.members.length}/${maxMembers}): ${escapeHTML(team.members.join(", ") || "Vazio")}</span>
                     </div>
                     <button onclick="joinPresetTeam('${team.name}')" ${isFull ? 'disabled class="bg-gray-300 text-gray-500 px-3 py-1.5 rounded-lg text-xs cursor-not-allowed"' : 'class="bg-green-500 hover:bg-green-600 text-white font-bold px-3 py-1.5 rounded-lg text-xs"'}>
                         ${isFull ? 'Equipe Lotada' : 'Entrar na Equipe'}
@@ -433,8 +443,8 @@
             }
             container.innerHTML = chatList.map(c => `
                 <div class="bg-white p-2 rounded-xl shadow-xs border border-indigo-100">
-                    <span class="font-bold text-indigo-700">${c.sender}</span> <span class="text-[10px] text-gray-400">${c.time}</span>
-                    <p class="text-gray-800 mt-0.5">${c.text}</p>
+                    <span class="font-bold text-indigo-700">${escapeHTML(c.sender)}</span> <span class="text-[10px] text-gray-400">${escapeHTML(c.time || '')}</span>
+                    <p class="text-gray-800 mt-0.5">${escapeHTML(c.text)}</p>
                 </div>
             `).join("");
             container.scrollTop = container.scrollHeight;
@@ -471,7 +481,7 @@
             const container = document.getElementById("ai-messages");
             container.innerHTML = aiList.map(a => `
                 <div class="p-2 rounded-xl border ${a.sender.includes('IA') ? 'bg-pink-100 border-pink-200 text-pink-950 font-medium' : 'bg-white border-pink-100 text-gray-800'}">
-                    <b>${a.sender}:</b> ${a.text}
+                    <b>${escapeHTML(a.sender)}:</b> ${escapeHTML(a.text)}
                 </div>
             `).join("");
             container.scrollTop = container.scrollHeight;
@@ -511,9 +521,9 @@
             if (typeof confetti === 'function') confetti({ particleCount: 150, spread: 90, origin: { y: 0.6 } });
 
             document.getElementById("final-report-view").innerHTML = `
-                <h3 class="text-xl font-black text-purple-900">${team.selectedTitle}</h3>
-                <p class="text-xs font-bold text-purple-600">Assunto: ${team.topic.topic} (${team.grade}º Ano)</p>
-                <p class="text-sm font-semibold text-gray-700">Equipe: ${team.members.join(", ")}</p>
+                <h3 class="text-xl font-black text-purple-900">${escapeHTML(team.selectedTitle)}</h3>
+                <p class="text-xs font-bold text-purple-600">Assunto: ${escapeHTML(team.topic.topic)} (${team.grade}º Ano)</p>
+                <p class="text-sm font-semibold text-gray-700">Equipe: ${escapeHTML(team.members.join(", "))}</p>
                 <hr class="my-2">
                 <div class="p-4 bg-gray-50 rounded-xl border border-gray-200">
                     ${team.docContent}
@@ -522,6 +532,18 @@
 
             sendWorkByEmail();
         }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const gradeSelect = document.getElementById('grade-select');
+            if (gradeSelect) {
+                gradeSelect.value = '';
+            }
+            if (typeof window !== 'undefined') {
+                if (localStorage.getItem('math_preset_teams_6')) {
+                    loadPresetTeams();
+                }
+            }
+        });
     </script>
 </body>
 </html>
