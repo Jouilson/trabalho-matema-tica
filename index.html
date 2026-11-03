@@ -8,6 +8,10 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&family=Poppins:wght@400;600;800&display=swap" rel="stylesheet">
+    
+    <!-- SDK do Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
     <style>
         body {
             font-family: 'Poppins', sans-serif;
@@ -33,13 +37,6 @@
             gap: 0.25rem;
         }
         .toolbar-btn:hover { background-color: #e5e7eb; }
-        .screen { display: none; }
-        .screen.active { display: block; }
-        .reset-btn {
-            border: 1px solid rgba(99,102,241,0.2);
-            background: rgba(99,102,241,0.08);
-            color: #4338ca;
-        }
     </style>
 </head>
 <body class="p-3 md:p-6 flex flex-col items-center justify-center">
@@ -56,7 +53,8 @@
     </header>
 
     <main class="max-w-4xl w-full glass-card rounded-3xl p-5 md:p-8 relative">
-        <section id="screen-login" class="screen active space-y-6">
+        <!-- TELA DE LOGIN -->
+        <section id="screen-login" class="space-y-6">
             <div class="text-center">
                 <span class="text-5xl">🛡️</span>
                 <h2 class="text-2xl md:text-3xl font-extrabold text-indigo-700 font-comic mt-2">Identificação do Aluno</h2>
@@ -80,27 +78,23 @@
             </div>
 
             <div class="bg-indigo-50 p-4 rounded-2xl border-2 border-indigo-200 space-y-3">
-                <div class="flex justify-between items-center">
+                <div class="flex justify-between items-center flex-wrap gap-2">
                     <h3 class="font-bold text-indigo-900"><i class="fa-solid fa-users"></i> Escolha a sua Equipe:</h3>
-                    <button onclick="loadPresetTeams()" class="text-xs bg-indigo-200 hover:bg-indigo-300 text-indigo-800 font-bold px-2.5 py-1 rounded-lg">
-                        <i class="fa-solid fa-rotate"></i> Atualizar Equipes
-                    </button>
+                    <div class="flex items-center gap-2">
+                        <button onclick="loadPresetTeams()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-3 py-1 rounded-xl text-xs shadow">
+                            <i class="fa-solid fa-rotate"></i> Carregar Equipes
+                        </button>
+                        <span id="conn-status" class="text-xs text-green-700 font-bold"><i class="fa-solid fa-bolt"></i> Supabase</span>
+                    </div>
                 </div>
                 <div id="teams-list-container" class="space-y-2 max-h-56 overflow-y-auto">
-                    <p class="text-xs text-gray-500 italic">Selecione o ano escolar acima para ver as equipes lúdicas.</p>
+                    <p class="text-xs text-gray-500 italic">Selecione o ano escolar acima ou clique em "Carregar Equipes".</p>
                 </div>
             </div>
         </section>
 
-        <section id="screen-title" class="screen space-y-6">
-            <div class="flex justify-between items-center">
-                <button onclick="showScreen('screen-login')" class="reset-btn px-3 py-2 rounded-xl text-xs font-bold">
-                    <i class="fa-solid fa-arrow-left"></i> Voltar
-                </button>
-                <div class="text-right text-xs text-gray-500">
-                    Equipe: <span id="title-screen-team" class="font-bold text-indigo-700">-</span>
-                </div>
-            </div>
+        <!-- TELA DE ESCOLHA DE TÍTULO -->
+        <section id="screen-title" class="hidden space-y-6">
             <div class="text-center">
                 <span class="text-5xl">🎨</span>
                 <h2 class="text-2xl md:text-3xl font-extrabold text-pink-600 font-comic mt-2">Escolha o Título do Trabalho</h2>
@@ -109,15 +103,15 @@
             <div id="title-suggestions" class="space-y-3"></div>
         </section>
 
-        <section id="screen-workspace" class="screen space-y-4">
+        <!-- TELA DO WORKSPACE -->
+        <section id="screen-workspace" class="hidden space-y-4">
             <div class="flex flex-wrap justify-between items-center bg-purple-100 p-3 rounded-2xl border border-purple-300">
                 <div>
                     <span id="workspace-team-name" class="font-black text-purple-900 text-lg">Equipe: Nome</span>
                     <p id="workspace-title-display" class="text-xs font-bold text-purple-700">Título: -</p>
                 </div>
-                <div class="flex items-center gap-2 flex-wrap justify-end">
-                    <button onclick="showScreen('screen-login')" class="bg-white border border-purple-200 text-purple-700 font-bold px-3 py-1.5 rounded-xl text-xs shadow hover:bg-purple-50">Trocar equipe</button>
-                    <span id="save-status" class="text-xs font-bold text-green-600 bg-green-100 px-3 py-1 rounded-full"><i class="fa-solid fa-cloud"></i> Salvo na nuvem</span>
+                <div class="flex items-center gap-2">
+                    <span id="save-status" class="text-xs font-bold text-green-600 bg-green-100 px-3 py-1 rounded-full"><i class="fa-solid fa-cloud"></i> Sincronizado</span>
                     <button onclick="saveWorkManually()" class="bg-green-600 hover:bg-green-700 text-white font-bold px-3 py-1.5 rounded-xl text-xs shadow">Salvar</button>
                     <button onclick="finishWorkspace()" class="bg-purple-600 hover:bg-purple-700 text-white font-bold px-3 py-1.5 rounded-xl text-xs shadow">Finalizar e Enviar ao Prof. 🏆</button>
                 </div>
@@ -138,7 +132,7 @@
                         <button onclick="insertPromptHelper(3)" class="toolbar-btn bg-emerald-100 text-emerald-800" title="Inserir Dica Fase 3">🛠️ Dica Fase 3</button>
                     </div>
 
-                    <div id="docs-editor" contenteditable="true" class="p-5 min-h-[380px] max-h-[480px] overflow-y-auto focus:outline-none font-medium text-gray-800 space-y-3" oninput="autoSaveWork()">
+                    <div id="docs-editor" contenteditable="true" oninput="autoSaveWork()" class="p-5 min-h-[380px] max-h-[480px] overflow-y-auto focus:outline-none font-medium text-gray-800 space-y-3">
                         <h3 class="text-purple-800 font-bold text-lg" id="doc-header-title">Relatório da Equipe</h3>
                         <p class="text-gray-500 italic">Comecem a escrever aqui as investigações, soluções e respostas aos desafios propostos...</p>
                     </div>
@@ -146,9 +140,8 @@
 
                 <div class="flex flex-col gap-4">
                     <div class="bg-indigo-50 rounded-2xl border-4 border-indigo-200 flex flex-col h-[230px] shadow-sm">
-                        <div class="bg-indigo-200 p-2.5 rounded-t-xl font-bold text-indigo-900 text-xs flex items-center justify-between">
-                            <span><i class="fa-solid fa-comments"></i> Bate-Papo da Equipe</span>
-                            <button onclick="refreshWorkspaceData()" class="text-[10px] text-indigo-800 underline">Atualizar chat</button>
+                        <div class="bg-indigo-200 p-2.5 rounded-t-xl font-bold text-indigo-900 text-xs flex items-center gap-2">
+                            <i class="fa-solid fa-comments"></i> Bate-Papo da Equipe (Ao Vivo)
                         </div>
                         <div id="chat-messages" class="flex-1 p-2 overflow-y-auto space-y-2 text-xs">
                             <p class="text-gray-500 italic text-center">Troquem ideias aqui!</p>
@@ -177,7 +170,8 @@
             </div>
         </section>
 
-        <section id="screen-finish" class="screen space-y-6 text-center">
+        <!-- TELA FINAL DE ENVIO -->
+        <section id="screen-finish" class="hidden space-y-6 text-center">
             <div class="space-y-2">
                 <span class="text-6xl animate-bounce inline-block">🏆</span>
                 <h2 class="text-3xl font-black text-purple-800 font-comic">TRABALHO ENVIADO COM SUCESSO!</h2>
@@ -187,14 +181,14 @@
             <div id="final-report-view" class="text-left bg-white p-6 rounded-2xl border-4 border-purple-200 space-y-3 shadow-inner max-h-96 overflow-y-auto">
             </div>
 
-            <div class="flex justify-center gap-3 flex-wrap">
+            <div class="flex justify-center gap-3">
                 <button onclick="sendWorkByEmail()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-2xl flex items-center gap-2">
                     <i class="fa-solid fa-envelope"></i> Reenviar por E-mail
                 </button>
                 <button onclick="window.print()" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-2xl flex items-center gap-2">
                     <i class="fa-solid fa-print"></i> Imprimir / PDF
                 </button>
-                <button onclick="resetSession()" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-3 px-6 rounded-2xl">
+                <button onclick="location.reload()" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-3 px-6 rounded-2xl">
                     🔄 Sair
                 </button>
             </div>
@@ -202,7 +196,10 @@
     </main>
 
     <script>
-        const database = {
+        // COLOQUE AS SUAS CREDENCIAIS DO SUPABASE AQUI:
+  const SUPABASE_URL = "https://cvhutlojlfudtzuqytxo.supabase.co";
+const SUPABASE_KEY = "sb_publishable_VX8jnhDx0KIVGnD4UVXbMA_BC6Td6Ng";
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
             "6": [
                 { topic: "Os Polígonos", titles: ["📐 Caçadores de Formas", "🎮 Polígonos nos Games", "🏰 Cidades Geométricas", "🎨 Arte com Polígonos", "🔍 Detetives do Perímetro"], q1: "O que faz uma figura geométrica ser um polígono e por que as linhas não se cruzam?", hint1: "Pense no formato do piso da sala." },
                 { topic: "A Porcentagem", titles: ["🏷️ Super Descontos", "🍕 A Mágica do 100%", "📊 Porcentagem Diária", "🎮 Bateria e Porcentagem", "💰 Economizando com %"], q1: "O que a porcentagem (%) significa no dia a dia?", hint1: "Observe a bateria do celular." }
@@ -223,156 +220,62 @@
             "🧠 Super Cientistas da Álgebra"
         ];
 
-        let currentUser = { name: "", grade: "", teamName: "" };
+        let currentUser = { name: "", grade: "", teamId: "" };
         let currentTopicData = null;
-        let workspaceRefreshInterval = null;
+        let realtimeSubscription = null;
 
-        function showScreen(screenId) {
-            document.querySelectorAll('.screen').forEach(el => {
-                el.classList.remove('active');
-                el.classList.add('hidden');
-            });
-            const target = document.getElementById(screenId);
-            if (target) {
-                target.classList.remove('hidden');
-                target.classList.add('active');
+        function sanitizeId(grade, teamName) {
+            return `g${grade}_${teamName.replace(/[^a-zA-Z0-9]/g, "_")}`;
+        }
+
+        async function fetchTeamsFromSupabase(grade) {
+            const { data, error } = await supabase.from('teams').select('*').eq('grade', grade);
+            if (error) {
+                console.error("Erro no Supabase:", error);
+                return [];
             }
+            return data || [];
         }
 
-        function escapeHTML(value = "") {
-            return String(value)
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/\"/g, "&quot;")
-                .replace(/'/g, "&#039;");
-        }
-
-        function safeGetStorage(key) {
-            try {
-                const value = localStorage.getItem(key);
-                return value ? JSON.parse(value) : null;
-            } catch (error) {
-                console.warn(`Falha ao ler ${key}:`, error);
-                return null;
-            }
-        }
-
-        function safeSetStorage(key, value) {
-            try {
-                localStorage.setItem(key, JSON.stringify(value));
-                return true;
-            } catch (error) {
-                console.warn(`Falha ao salvar ${key}:`, error);
-                return false;
-            }
-        }
-
-        function normalizeTeamMembers(team) {
-            if (!team) return [];
-            const members = Array.isArray(team.members) ? team.members : [];
-            const normalized = members
-                .filter(Boolean)
-                .map(name => String(name).trim())
-                .filter(name => name.length > 0);
-
-            team.members = [...new Set(normalized)];
-            return team.members;
-        }
-
-        function getPresetTeamsForGrade(grade) {
-            const storageKey = `math_preset_teams_${grade}`;
-            let teams = safeGetStorage(storageKey);
-            const topicsList = database[grade] || database["6"];
-
-            if (!teams || !Array.isArray(teams)) {
-                teams = presetTeamNames.map((name, index) => {
-                    const assignedTopic = topicsList[index % topicsList.length];
-                    return {
-                        name,
-                        grade,
-                        members: [],
-                        topic: assignedTopic,
-                        selectedTitle: "",
-                        docContent: "",
-                        chat: [],
-                        aiChat: []
-                    };
-                });
-                safeSetStorage(storageKey, teams);
-            }
-
-            teams = teams.map((team, index) => {
-                if (!team) {
-                    team = {
-                        name: presetTeamNames[index],
-                        grade,
-                        members: [],
-                        topic: topicsList[index % topicsList.length],
-                        selectedTitle: "",
-                        docContent: "",
-                        chat: [],
-                        aiChat: []
-                    };
-                }
-
-                if (!team.topic) team.topic = topicsList[index % topicsList.length];
-                if (!Array.isArray(team.members)) team.members = [];
-                if (!Array.isArray(team.chat)) team.chat = [];
-                if (!Array.isArray(team.aiChat)) team.aiChat = [];
-
-                normalizeTeamMembers(team);
-                return team;
-            });
-
-            return teams;
-        }
-
-        function getLatestTeamForCurrentUser() {
-            if (!currentUser.grade || !currentUser.teamName) return null;
-            const teams = getPresetTeamsForGrade(currentUser.grade);
-            return teams.find(x => x.name === currentUser.teamName) || null;
-        }
-
-        function resetSession() {
-            if (workspaceRefreshInterval) clearInterval(workspaceRefreshInterval);
-            currentUser = { name: "", grade: "", teamName: "" };
-            currentTopicData = null;
-            document.getElementById("student-name").value = "";
-            document.getElementById("grade-select").value = "";
-            document.getElementById("chat-input").value = "";
-            document.getElementById("ai-input").value = "";
-            document.getElementById("docs-editor").innerHTML = '<h3 class="text-purple-800 font-bold text-lg" id="doc-header-title">Relatório da Equipe</h3><p class="text-gray-500 italic">Comecem a escrever aqui as investigações, soluções e respostas aos desafios propostos...</p>';
-            document.getElementById("teams-list-container").innerHTML = '<p class="text-xs text-gray-500 italic">Selecione o ano escolar acima para ver as equipes lúdicas.</p>';
-            document.getElementById("title-suggestions").innerHTML = "";
-            document.getElementById("chat-messages").innerHTML = '<p class="text-gray-500 italic text-center">Troquem ideias aqui!</p>';
-            document.getElementById("ai-messages").innerHTML = '<div class="bg-white p-2 rounded-xl border border-pink-100 text-gray-800"><b>Professor IA:</b> Olá! Pergunte-me qualquer dúvida sobre o assunto do seu trabalho para receber ideias e explicações!</div>';
-            showScreen("screen-login");
-        }
-
-        function loadPresetTeams() {
+        async function loadPresetTeams() {
             const grade = document.getElementById("grade-select").value;
             const container = document.getElementById("teams-list-container");
-            container.innerHTML = "";
+            container.innerHTML = '<p class="text-xs text-gray-500 italic animate-pulse">A carregar equipes...</p>';
 
             if (!grade) {
                 container.innerHTML = '<p class="text-xs text-gray-500 italic">Selecione o ano escolar acima.</p>';
                 return;
             }
 
-            const maxMembers = (grade === "8") ? 4 : 5;
-            const teams = getPresetTeamsForGrade(grade);
+            let maxMembers = (grade === "8") ? 4 : 5;
+            const topicsList = database[grade] || database["6"];
 
-            teams.forEach(team => {
-                const isFull = team.members.length >= maxMembers;
+            let existingTeams = await fetchTeamsFromSupabase(grade);
+            let teamsMap = {};
+            existingTeams.forEach(t => teamsMap[t.id] = t);
+
+            container.innerHTML = "";
+
+            presetTeamNames.forEach((teamName, index) => {
+                let teamId = sanitizeId(grade, teamName);
+                let teamInfo = teamsMap[teamId] || {
+                    id: teamId,
+                    name: teamName,
+                    members: [],
+                    topic: topicsList[index % topicsList.length]
+                };
+
+                let membersList = teamInfo.members || [];
+                const isFull = membersList.length >= maxMembers;
+
                 const div = document.createElement("div");
-                div.className = "flex justify-between items-center bg-white p-2.5 rounded-xl border border-indigo-200 text-sm";
+                div.className = "flex justify-between items-center bg-white p-2.5 rounded-xl border border-indigo-200 text-sm mb-2";
                 div.innerHTML = `
                     <div>
-                        <span class="font-bold text-indigo-900">${escapeHTML(team.name)}</span>
-                        <span class="text-xs text-gray-500 block">Tema: ${escapeHTML(team.topic.topic)} | Membros (${team.members.length}/${maxMembers}): ${escapeHTML(team.members.join(", ") || "Vazio")}</span>
+                        <span class="font-bold text-indigo-900">${teamInfo.name}</span>
+                        <span class="text-xs text-gray-500 block">Tema: ${teamInfo.topic ? teamInfo.topic.topic : 'Matemática'} | Membros (${membersList.length}/${maxMembers}): ${membersList.join(", ") || "Vazio"}</span>
                     </div>
-                    <button onclick="joinPresetTeam('${team.name}')" ${isFull ? 'disabled class="bg-gray-300 text-gray-500 px-3 py-1.5 rounded-lg text-xs cursor-not-allowed"' : 'class="bg-green-500 hover:bg-green-600 text-white font-bold px-3 py-1.5 rounded-lg text-xs"'}>
+                    <button onclick="joinPresetTeam('${teamId}', '${teamName}')" ${isFull ? 'disabled class="bg-gray-300 text-gray-500 px-3 py-1.5 rounded-lg text-xs cursor-not-allowed"' : 'class="bg-green-500 hover:bg-green-600 text-white font-bold px-3 py-1.5 rounded-lg text-xs"'}>
                         ${isFull ? 'Equipe Lotada' : 'Entrar na Equipe'}
                     </button>
                 `;
@@ -380,7 +283,7 @@
             });
         }
 
-        function joinPresetTeam(teamName) {
+        async function joinPresetTeam(teamId, teamName) {
             const studentName = document.getElementById("student-name").value.trim();
             const grade = document.getElementById("grade-select").value;
 
@@ -389,61 +292,55 @@
                 return;
             }
 
-            if (!grade) {
-                alert("Selecione o ano escolar antes de entrar em uma equipe!");
-                return;
-            }
+            let maxMembers = (grade === "8") ? 4 : 5;
+            const topicsList = database[grade] || database["6"];
+            let index = presetTeamNames.indexOf(teamName);
+            let defaultTopic = topicsList[index >= 0 ? index % topicsList.length : 0];
 
-            const maxMembers = (grade === "8") ? 4 : 5;
-            const teams = getPresetTeamsForGrade(grade);
-            const team = teams.find(t => t.name === teamName);
-            if (!team) return;
+            let { data: teamData } = await supabase.from('teams').select('*').eq('id', teamId).single();
 
-            normalizeTeamMembers(team);
-
-            if (team.members.includes(studentName)) {
-                currentUser = { name: studentName, grade, teamName };
-                proceedAfterLogin(team);
-                return;
-            }
-
-            const inAnotherTeam = teams.some(t => {
-                if (t.name === teamName) return false;
-                return normalizeTeamMembers(t).includes(studentName);
-            });
-
-            if (inAnotherTeam) {
-                alert("Você já está cadastrado em outra equipe deste ano!");
-                return;
-            }
-
-            if (team.members.length >= maxMembers) {
-                alert(`Esta equipe atingiu o limite máximo de ${maxMembers} alunos.`);
-                return;
-            }
-
-            team.members.push(studentName);
-            team.members = [...new Set(team.members.map(n => n.trim()).filter(Boolean))];
-            safeSetStorage(`math_preset_teams_${grade}`, teams);
-
-            currentUser = { name: studentName, grade, teamName };
-            proceedAfterLogin(team);
-        }
-
-        function proceedAfterLogin(teamObj) {
-            if (!teamObj) return;
-            currentTopicData = teamObj.topic;
-            document.getElementById("title-screen-team").innerText = teamObj.name;
-            showScreen("screen-title");
-
-            if (!teamObj.selectedTitle) {
-                showTitleChoices(teamObj);
+            if (!teamData) {
+                let newTeam = {
+                    id: teamId,
+                    grade: grade,
+                    name: teamName,
+                    members: [studentName],
+                    topic: defaultTopic,
+                    selected_title: "",
+                    doc_content: "",
+                    chat: []
+                };
+                await supabase.from('teams').insert([newTeam]);
+                teamData = newTeam;
             } else {
-                openWorkspace(teamObj);
+                let currentMembers = teamData.members || [];
+                if (!currentMembers.includes(studentName)) {
+                    if (currentMembers.length >= maxMembers) {
+                        alert(`Esta equipe já atingiu o limite de ${maxMembers} alunos.`);
+                        return;
+                    }
+                    currentMembers.push(studentName);
+                    await supabase.from('teams').update({ members: currentMembers }).eq('id', teamId);
+                    teamData.members = currentMembers;
+                }
+            }
+
+            currentUser = { name: studentName, grade: grade, teamId: teamId, teamName: teamName };
+            proceedAfterLogin(teamData);
+        }
+
+        function proceedAfterLogin(teamData) {
+            currentTopicData = teamData.topic;
+            document.getElementById("screen-login").classList.add("hidden");
+
+            if (!teamData.selected_title) {
+                showTitleChoices(teamData);
+            } else {
+                openWorkspace(teamData);
             }
         }
 
-        function showTitleChoices(teamObj) {
+        function showTitleChoices(teamData) {
             document.getElementById("screen-title").classList.remove("hidden");
             const container = document.getElementById("title-suggestions");
             container.innerHTML = "";
@@ -452,58 +349,42 @@
                 const div = document.createElement("div");
                 div.className = "p-4 rounded-2xl border-4 border-pink-200 hover:border-pink-500 bg-white cursor-pointer font-bold text-gray-800";
                 div.innerText = t;
-                div.onclick = () => {
-                    const teams = getPresetTeamsForGrade(currentUser.grade);
-                    const tObj = teams.find(x => x.name === currentUser.teamName);
-                    if (!tObj) return;
-                    tObj.selectedTitle = t;
-                    safeSetStorage(`math_preset_teams_${currentUser.grade}`, teams);
-                    openWorkspace(tObj);
+                div.onclick = async () => {
+                    await supabase.from('teams').update({ selected_title: t }).eq('id', currentUser.teamId);
+                    teamData.selected_title = t;
+                    openWorkspace(teamData);
                 };
                 container.appendChild(div);
             });
         }
 
-        function openWorkspace(teamObj) {
-            const teams = getPresetTeamsForGrade(currentUser.grade);
-            const team = teams.find(x => x.name === currentUser.teamName) || teamObj;
-            if (team) {
-                currentTopicData = team.topic;
-            }
+        function openWorkspace(teamData) {
+            document.getElementById("screen-title").classList.add("hidden");
+            document.getElementById("screen-workspace").classList.remove("hidden");
 
-            showScreen("screen-workspace");
-            updateWorkspaceUI(team || teamObj);
+            updateUIFromTeamData(teamData);
 
-            if (workspaceRefreshInterval) clearInterval(workspaceRefreshInterval);
-            workspaceRefreshInterval = setInterval(refreshWorkspaceData, 3000);
+            if (realtimeSubscription) supabase.removeChannel(realtimeSubscription);
+
+            realtimeSubscription = supabase.channel(`public:teams:id=eq.${currentUser.teamId}`)
+                .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'teams', filter: `id=eq.${currentUser.teamId}` }, payload => {
+                    updateUIFromTeamData(payload.new);
+                })
+                .subscribe();
         }
 
-        function refreshWorkspaceData() {
-            const latestTeam = getLatestTeamForCurrentUser();
-            if (!latestTeam) return;
-            updateWorkspaceUI(latestTeam);
-        }
-
-        function updateWorkspaceUI(teamObj) {
-            if (!teamObj) return;
-
-            const teams = getPresetTeamsForGrade(currentUser.grade);
-            const team = teams.find(t => t.name === currentUser.teamName) || teamObj;
-            if (!team) return;
-
-            normalizeTeamMembers(team);
-
-            document.getElementById("workspace-team-name").innerText = `Equipe: ${team.name} (${team.members.join(", ") || "Sem membros"})`;
-            document.getElementById("workspace-title-display").innerText = `Título: ${team.selectedTitle || '-'}`;
-            document.getElementById("doc-header-title").innerText = team.selectedTitle || team.topic.topic;
+        function updateUIFromTeamData(data) {
+            let membersArray = data.members || [];
+            document.getElementById("workspace-team-name").innerText = `Equipe: ${data.name} (${membersArray.join(", ")})`;
+            document.getElementById("workspace-title-display").innerText = `Título: ${data.selected_title || '-'}`;
+            document.getElementById("doc-header-title").innerText = data.selected_title || (data.topic ? data.topic.topic : "Relatório");
 
             const editor = document.getElementById("docs-editor");
-            if (team.docContent && editor.innerHTML !== team.docContent) {
-                editor.innerHTML = team.docContent;
+            if (data.doc_content !== undefined && document.activeElement !== editor) {
+                editor.innerHTML = data.doc_content;
             }
 
-            renderChat(team.chat || []);
-            renderAI(team.aiChat || []);
+            renderChat(data.chat || []);
         }
 
         function docCommand(command, value = null) {
@@ -521,51 +402,48 @@
             autoSaveWork();
         }
 
-        function autoSaveWork() {
-            if (!currentUser.grade || !currentUser.teamName) return;
-
-            const teams = getPresetTeamsForGrade(currentUser.grade);
-            const team = teams.find(x => x.name === currentUser.teamName);
-            if (!team) return;
-
-            normalizeTeamMembers(team);
-            team.docContent = document.getElementById("docs-editor").innerHTML;
-            safeSetStorage(`math_preset_teams_${currentUser.grade}`, teams);
+        async function autoSaveWork() {
+            if (!currentUser.teamId) return;
+            const content = document.getElementById("docs-editor").innerHTML;
+            await supabase.from('teams').update({ doc_content: content }).eq('id', currentUser.teamId);
         }
 
         function saveWorkManually() {
             autoSaveWork();
             const status = document.getElementById("save-status");
             status.innerHTML = '<i class="fa-solid fa-check"></i> Salvo!';
-            setTimeout(() => { status.innerHTML = '<i class="fa-solid fa-cloud"></i> Salvo na nuvem'; }, 2000);
+            setTimeout(() => { status.innerHTML = '<i class="fa-solid fa-cloud"></i> Sincronizado'; }, 2000);
         }
 
-        function sendChatMessage() {
+        async function sendChatMessage() {
             const input = document.getElementById("chat-input");
             const msg = input.value.trim();
-            if (!msg) return;
+            if (!msg || !currentUser.teamId) return;
 
-            const teams = getPresetTeamsForGrade(currentUser.grade);
-            const team = teams.find(x => x.name === currentUser.teamName);
-            if (!team) return;
+            let { data: teamData } = await supabase.from('teams').select('chat').eq('id', currentUser.teamId).single();
+            let currentChat = teamData ? (teamData.chat || []) : [];
 
-            if (!team.chat) team.chat = [];
-            team.chat.push({ sender: currentUser.name, text: msg, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) });
-            safeSetStorage(`math_preset_teams_${currentUser.grade}`, teams);
+            const chatMsg = {
+                sender: currentUser.name,
+                text: msg,
+                time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+            };
+
+            currentChat.push(chatMsg);
+            await supabase.from('teams').update({ chat: currentChat }).eq('id', currentUser.teamId);
             input.value = "";
-            renderChat(team.chat);
         }
 
         function renderChat(chatList) {
             const container = document.getElementById("chat-messages");
-            if (!chatList || chatList.length === 0) {
+            if (chatList.length === 0) {
                 container.innerHTML = '<p class="text-gray-500 italic text-center">Troquem ideias aqui!</p>';
                 return;
             }
             container.innerHTML = chatList.map(c => `
                 <div class="bg-white p-2 rounded-xl shadow-xs border border-indigo-100">
-                    <span class="font-bold text-indigo-700">${escapeHTML(c.sender)}</span> <span class="text-[10px] text-gray-400">${escapeHTML(c.time || '')}</span>
-                    <p class="text-gray-800 mt-0.5">${escapeHTML(c.text)}</p>
+                    <span class="font-bold text-indigo-700">${c.sender}</span> <span class="text-[10px] text-gray-400">${c.time}</span>
+                    <p class="text-gray-800 mt-0.5">${c.text}</p>
                 </div>
             `).join("");
             container.scrollTop = container.scrollHeight;
@@ -576,101 +454,70 @@
             const query = input.value.trim();
             if (!query) return;
 
-            const teams = getPresetTeamsForGrade(currentUser.grade);
-            const team = teams.find(x => x.name === currentUser.teamName);
-            if (!team) return;
-
-            if (!team.aiChat) team.aiChat = [];
-            team.aiChat.push({ sender: currentUser.name, text: query });
+            const container = document.getElementById("ai-messages");
 
             let aiReply = `Ótima pergunta sobre ${currentTopicData.topic}! Para responder a isso no trabalho, pensem em como aplicamos esse conceito no cotidiano (na escola, nas compras ou em jogos). Pesquisem exemplos práticos e registrem no documento!`;
-
-            const lower = query.toLowerCase();
-            if (lower.includes("polígono") || lower.includes("poligono")) {
+            
+            if (query.toLowerCase().includes("polígono")) {
                 aiReply = "Polígonos são figuras geométricas planas fechadas formadas apenas por segmentos de reta que não se cruzam (como triângulos, quadrados e hexágonos). No cotidiano, vemos polígonos nas janelas, pisos, placas de trânsito e em gráficos de jogos!";
-            } else if (lower.includes("porcentagem")) {
+            } else if (query.toLowerCase().includes("porcentagem")) {
                 aiReply = "A porcentagem representa uma razão com base 100. Pensem nela como fatias de um total de 100 partes. No dia a dia, usamos em descontos de lojas, promoções e na bateria do celular!";
-            } else if (lower.includes("equação") || lower.includes("equacao")) {
+            } else if (query.toLowerCase().includes("equação")) {
                 aiReply = "Uma equação envolve valores desconhecidos (incógnitas). No 8º ano, as equações do 2º grau ajudam a calcular áreas, trajetórias de objetos e lançamentos!";
             }
 
-            team.aiChat.push({ sender: "Professor IA 🤖", text: aiReply });
-            safeSetStorage(`math_preset_teams_${currentUser.grade}`, teams);
+            container.innerHTML += `
+                <div class="p-2 rounded-xl border bg-white border-pink-100 text-gray-800"><b>${currentUser.name}:</b> ${query}</div>
+                <div class="p-2 rounded-xl border bg-pink-100 border-pink-200 text-pink-950 font-medium"><b>Professor IA 🤖:</b> ${aiReply}</div>
+            `;
             input.value = "";
-            renderAI(team.aiChat);
-        }
-
-        function renderAI(aiList) {
-            const container = document.getElementById("ai-messages");
-            if (!aiList || aiList.length === 0) {
-                container.innerHTML = '<div class="bg-white p-2 rounded-xl border border-pink-100 text-gray-800"><b>Professor IA:</b> Olá! Pergunte-me qualquer dúvida sobre o assunto do seu trabalho para receber ideias e explicações!</div>';
-                return;
-            }
-            container.innerHTML = aiList.map(a => `
-                <div class="p-2 rounded-xl border ${a.sender.includes('IA') ? 'bg-pink-100 border-pink-200 text-pink-950 font-medium' : 'bg-white border-pink-100 text-gray-800'}">
-                    <b>${escapeHTML(a.sender)}:</b> ${escapeHTML(a.text)}
-                </div>
-            `).join("");
             container.scrollTop = container.scrollHeight;
         }
 
-        function sendWorkByEmail() {
-            if (!currentUser.grade || !currentUser.teamName) return;
-            saveWorkManually();
-            const teams = getPresetTeamsForGrade(currentUser.grade);
-            const team = teams.find(x => x.name === currentUser.teamName);
-            if (!team) return;
+        async function sendWorkByEmail() {
+            await autoSaveWork();
+            let { data: team } = await supabase.from('teams').select('*').eq('id', currentUser.teamId).single();
+            let membersArray = team ? (team.members || []) : [currentUser.name];
 
             const professorEmail = "profjouilson@gmail.com";
-            const subject = encodeURIComponent(`Trabalho de Matemática - ${team.grade}º Ano - Equipe: ${team.name}`);
+            const subject = encodeURIComponent(`Trabalho de Matemática - ${currentUser.grade}º Ano - Equipe: ${team.name}`);
             const tempDiv = document.createElement("div");
-            tempDiv.innerHTML = team.docContent;
-            const plainTextContent = tempDiv.innerText || tempDiv.textContent || "";
+            tempDiv.innerHTML = team.doc_content;
+            const plainTextContent = tempDiv.innerText || tempDiv.textContent;
 
             const body = encodeURIComponent(
                 `Olá Professor Jouilson,\n\nA equipe ${team.name} concluiu o trabalho!\n\n` +
-                `Ano: ${team.grade}º Ano\n` +
-                `Tema: ${team.topic.topic}\n` +
-                `Título: ${team.selectedTitle}\n` +
-                `Integrantes: ${team.members.join(", ")}\n\n` +
+                `Ano: ${currentUser.grade}º Ano\n` +
+                `Tema: ${team.topic ? team.topic.topic : 'Matemática'}\n` +
+                `Título: ${team.selected_title}\n` +
+                `Integrantes: ${membersArray.join(", ")}\n\n` +
                 `--- CONTEÚDO DO TRABALHO ---\n\n${plainTextContent}`
             );
 
             window.location.href = `mailto:${professorEmail}?subject=${subject}&body=${body}`;
         }
 
-        function finishWorkspace() {
-            if (!currentUser.grade || !currentUser.teamName) return;
-            if (workspaceRefreshInterval) clearInterval(workspaceRefreshInterval);
-            saveWorkManually();
+        async function finishWorkspace() {
+            await autoSaveWork();
+            let { data: team } = await supabase.from('teams').select('*').eq('id', currentUser.teamId).single();
+            let membersArray = team ? (team.members || []) : [currentUser.name];
 
-            const teams = getPresetTeamsForGrade(currentUser.grade);
-            const team = teams.find(x => x.name === currentUser.teamName);
-            if (!team) return;
-
-            showScreen("screen-finish");
+            document.getElementById("screen-workspace").classList.add("hidden");
+            document.getElementById("screen-finish").classList.remove("hidden");
             if (typeof confetti === 'function') confetti({ particleCount: 150, spread: 90, origin: { y: 0.6 } });
 
             document.getElementById("final-report-view").innerHTML = `
-                <h3 class="text-xl font-black text-purple-900">${escapeHTML(team.selectedTitle)}</h3>
-                <p class="text-xs font-bold text-purple-600">Assunto: ${escapeHTML(team.topic.topic)} (${team.grade}º Ano)</p>
-                <p class="text-sm font-semibold text-gray-700">Equipe: ${escapeHTML(team.members.join(", "))}</p>
+                <h3 class="text-xl font-black text-purple-900">${team.selected_title}</h3>
+                <p class="text-xs font-bold text-purple-600">Assunto: ${team.topic ? team.topic.topic : 'Matemática'} (${currentUser.grade}º Ano)</p>
+                <p class="text-sm font-semibold text-gray-700">Equipe: ${membersArray.join(", ")}</p>
                 <hr class="my-2">
                 <div class="p-4 bg-gray-50 rounded-xl border border-gray-200">
-                    ${team.docContent}
+                    ${team.doc_content}
                 </div>
             `;
 
             sendWorkByEmail();
         }
-
-        document.addEventListener('DOMContentLoaded', () => {
-            const gradeSelect = document.getElementById('grade-select');
-            if (gradeSelect) {
-                gradeSelect.value = '';
-            }
-            showScreen('screen-login');
-        });
     </script>
 </body>
 </html>
